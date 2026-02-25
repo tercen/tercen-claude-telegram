@@ -83,6 +83,7 @@ export class ClaudeBridge {
     }
 
     await typing(chatId);
+    console.log(`[claude] Starting query for chat ${chatId}, session=${session.sessionId || "new"}`);
 
     // Collect assistant text and tool use events
     let assistantText = "";
@@ -91,8 +92,11 @@ export class ClaudeBridge {
 
     try {
       const stream = query({ prompt, options: options as any });
+      console.log(`[claude] Stream created, iterating messages...`);
 
       for await (const message of stream) {
+        console.log(`[claude] Message: type=${message.type}${("subtype" in message) ? ` subtype=${message.subtype}` : ""}`);
+
         // Keep typing indicator alive
         if (Date.now() - lastTypingTime > 4000) {
           await typing(chatId);
@@ -103,6 +107,7 @@ export class ClaudeBridge {
           case "system":
             if (message.subtype === "init") {
               session.sessionId = message.session_id;
+              console.log(`[claude] Session initialized: ${message.session_id}`);
             }
             break;
 
@@ -127,6 +132,7 @@ export class ClaudeBridge {
           }
 
           case "result": {
+            console.log(`[claude] Result: subtype=${message.subtype}, is_error=${message.is_error}`);
             if (message.subtype === "success" && message.result) {
               assistantText = message.result;
             } else if ("errors" in message && message.errors?.length) {
@@ -136,7 +142,9 @@ export class ClaudeBridge {
           }
         }
       }
+      console.log(`[claude] Stream finished. assistantText length=${assistantText.length}, toolEvents=${toolEvents.length}`);
     } catch (err: unknown) {
+      console.error(`[claude] Error:`, err);
       if (err instanceof Error && err.name === "AbortError") {
         await send(chatId, "⏹ Operation cancelled.");
         return;

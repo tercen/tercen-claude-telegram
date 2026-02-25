@@ -44,11 +44,13 @@ export function createBot(config: Config, claude: ClaudeBridge): Bot {
   bot.on("message:text", async (ctx) => {
     const chatId = ctx.chat!.id;
     const text = ctx.message.text;
+    console.log(`[bot] Received message from chat ${chatId}: ${text.slice(0, 100)}`);
 
     // Skip empty messages
     if (!text.trim()) return;
 
     const send = async (cid: number, msg: string) => {
+      console.log(`[bot] Sending to ${cid}: ${msg.slice(0, 100)}...`);
       await bot.api.sendMessage(cid, msg);
     };
 
@@ -57,6 +59,7 @@ export function createBot(config: Config, claude: ClaudeBridge): Bot {
     };
 
     await claude.sendMessage(chatId, text, send, typing);
+    console.log(`[bot] Finished handling message from chat ${chatId}`);
   });
 
   return bot;
